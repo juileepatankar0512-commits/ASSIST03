@@ -1,56 +1,68 @@
 # ASSIST03
 AI-powered document intelligence system that enables semantic search, knowledge retrieval, and question answering over uploaded PDFs and documents.
-# app.py
 
 from pypdf import PdfReader
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
-print("=" * 50)
-print("📚 Personal Knowledge Assistant")
-print("=" * 50)
+print("="*60)
+print("PERSONAL KNOWLEDGE ASSISTANT")
+print("="*60)
 
-pdf_path = input("Enter the PDF file name (e.g., notes.pdf): ")
+pdf_file = input("Enter PDF filename: ")
 
-try:
-reader = PdfReader(pdf_path)
+reader = PdfReader(pdf_file)
 
-```
 document_text = ""
 
 for page in reader.pages:
     text = page.extract_text()
+
     if text:
         document_text += text + "\n"
 
-print("\n✅ Document loaded successfully!")
-print(f"📄 Total characters extracted: {len(document_text)}")
+print("\nPDF Loaded Successfully!")
+
+# Split into chunks
+
+chunks = []
+
+chunk_size = 500
+
+for i in range(0, len(document_text), chunk_size):
+    chunks.append(document_text[i:i+chunk_size])
+
+print(f"\nCreated {len(chunks)} knowledge chunks")
+
+# Load embedding model
+
+print("\nLoading AI model...")
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+chunk_embeddings = model.encode(chunks)
+
+print("Knowledge base ready!")
 
 while True:
-    question = input("\nAsk a question (or type 'exit'): ")
 
-    if question.lower() == "exit":
-        print("👋 Goodbye!")
+    query = input("\nAsk a question (type exit to quit): ")
+
+    if query.lower() == "exit":
         break
 
-    matches = []
+    query_embedding = model.encode([query])
 
-    paragraphs = document_text.split("\n")
+    similarities = cosine_similarity(
+        query_embedding,
+        chunk_embeddings
+    )[0]
 
-    for paragraph in paragraphs:
-        if question.lower() in paragraph.lower():
-            matches.append(paragraph)
+    best_match_index = np.argmax(similarities)
 
-    if matches:
-        print("\n🔍 Relevant Information Found:\n")
+    print("\nMost Relevant Information:\n")
+    print(chunks[best_match_index])
 
-        for match in matches[:5]:
-            print("-" * 40)
-            print(match)
-            print("-" * 40)
-    else:
-        print("\n❌ No relevant information found.")
-```
-
-except FileNotFoundError:
-print("\n❌ PDF file not found.")
-except Exception as e:
-print("\n⚠️ Error:", e)
+    print("\nSimilarity Score:",
+          round(similarities[best_match_index], 3))
